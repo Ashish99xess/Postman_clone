@@ -34,6 +34,7 @@ function App() {
   // Modals
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSaveAs, setIsSaveAs] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [saveReqName, setSaveReqName] = useState('');
   const [selectedColId, setSelectedColId] = useState('');
   const [showCollectionModal, setShowCollectionModal] = useState(false);
@@ -734,9 +735,15 @@ function App() {
   };
 
   const handleSaveRequest = async () => {
-    if (!activeTab || !saveReqName.trim() || !token) return;
+    if (!activeTab || !saveReqName.trim() || !token || isSaving) return;
 
+    setIsSaving(true);
     let targetColId = selectedColId;
+
+    // Fallback: If targetColId is empty but we have collections, default to the first one!
+    if (!targetColId && collections.length > 0) {
+      targetColId = collections[0].id;
+    }
 
     // Create collection if none selected/exists
     if (!targetColId && collections.length === 0) {
@@ -756,11 +763,15 @@ function App() {
         }
       } catch (err) {
         console.error(err);
+        setIsSaving(false);
         return;
       }
     }
 
-    if (!targetColId) return;
+    if (!targetColId) {
+      setIsSaving(false);
+      return;
+    }
 
     const reqPayload = {
       name: saveReqName.trim(),
@@ -810,6 +821,8 @@ function App() {
       }
     } catch (err) {
       console.error('Error saving request:', err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1779,9 +1792,9 @@ function App() {
               <button 
                 className="btn-primary" 
                 onClick={handleSaveRequest}
-                disabled={!saveReqName.trim()}
+                disabled={!saveReqName.trim() || isSaving}
               >
-                Save
+                {isSaving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
