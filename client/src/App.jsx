@@ -646,6 +646,26 @@ function App() {
     if (!activeTab || !token) return;
 
     if (activeTab.isSaved && activeTab.collectionId && activeTab.requestId) {
+      // Find the original request from the collections to check if method or URL changed
+      const currentCollection = collections.find(c => c.id === activeTab.collectionId);
+      const originalReq = currentCollection?.requests?.find(r => r.id === activeTab.requestId);
+      
+      const methodChanged = originalReq && originalReq.method !== activeTab.method;
+      const urlChanged = originalReq && originalReq.url !== activeTab.url;
+
+      if (methodChanged || urlChanged) {
+        const confirmOverwrite = window.confirm(
+          `You have changed the request ${methodChanged ? 'Method' : ''}${methodChanged && urlChanged ? ' and ' : ''}${urlChanged ? 'URL' : ''}.\n\n` +
+          `Click 'OK' to OVERWRITE the existing request "${originalReq.name}".\n` +
+          `Click 'Cancel' to save it as a NEW request instead.`
+        );
+        
+        if (!confirmOverwrite) {
+          handleSaveAs();
+          return;
+        }
+      }
+
       // Direct Save (Update existing request) without opening modal!
       const reqPayload = {
         name: activeTab.name,
