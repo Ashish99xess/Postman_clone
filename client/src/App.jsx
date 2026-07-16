@@ -33,6 +33,7 @@ function App() {
 
   // Modals
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [isSaveAs, setIsSaveAs] = useState(false);
   const [saveReqName, setSaveReqName] = useState('');
   const [selectedColId, setSelectedColId] = useState('');
   const [showCollectionModal, setShowCollectionModal] = useState(false);
@@ -629,13 +630,87 @@ function App() {
   };
 
   // Save Modal Action
+  // Save Modal Action
   const openSaveModal = () => {
     if (!activeTab) return;
     setSaveReqName(activeTab.name === 'New Request' ? '' : activeTab.name);
-    if (collections.length > 0) {
+    if (activeTab.collectionId) {
+      setSelectedColId(activeTab.collectionId);
+    } else if (collections.length > 0) {
       setSelectedColId(collections[0].id);
     }
     setShowSaveModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!activeTab || !token) return;
+
+    if (activeTab.isSaved && activeTab.collectionId && activeTab.requestId) {
+      // Direct Save (Update existing request) without opening modal!
+      const reqPayload = {
+        name: activeTab.name,
+        url: activeTab.url,
+        method: activeTab.method,
+        headers: activeTab.headers.filter(h => h.key !== ''),
+        body: activeTab.body,
+        bodyType: activeTab.bodyType,
+        auth: activeTab.auth,
+        queryParams: activeTab.queryParams.filter(p => p.key !== '')
+      };
+
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/collections/${activeTab.collectionId}/requests/${activeTab.requestId}`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(reqPayload)
+        });
+
+        if (res.ok) {
+          fetchCollections(token);
+        }
+      } catch (err) {
+        console.error('Error saving request:', err);
+      }
+    } else {
+      // Opens the modal for new requests
+      setIsSaveAs(false);
+      openSaveModal();
+    }
+  };
+
+  const handleSaveAs = () => {
+    if (!activeTab) return;
+    setIsSaveAs(true);
+    setSaveReqName(activeTab.name === 'New Request' ? '' : activeTab.name);
+    if (activeTab.collectionId) {
+      setSelectedColId(activeTab.collectionId);
+    } else if (collections.length > 0) {
+      setSelectedColId(collections[0].id);
+    }
+    setShowSaveModal(true);
+  };
+
+  const handleAddRequestToCollection = (colId, e) => {
+    e.stopPropagation();
+    
+    // Create new tab pre-linked to this collection
+    const newTab = createNewTab({
+      name: 'New Request',
+      collectionId: colId,
+      isSaved: false
+    });
+    
+    setTabs([...tabs, newTab]);
+    setActiveTabId(newTab.id);
+    
+    // Expand the collection folder so they can see it
+    setExpandedCollections(prev => ({
+      ...prev,
+      [colId]: true
+    }));
   };
 
   const handleSaveRequest = async () => {
@@ -680,7 +755,7 @@ function App() {
 
     try {
       let res;
-      if (activeTab.isSaved && activeTab.collectionId && activeTab.requestId) {
+      if (!isSaveAs && activeTab.isSaved && activeTab.collectionId && activeTab.requestId) {
         // Update existing request
         res = await fetch(`${BACKEND_URL}/api/collections/${activeTab.collectionId}/requests/${activeTab.requestId}`, {
           method: 'PUT',
@@ -1112,6 +1187,13 @@ function App() {
                           </div>
                           <div className="collection-actions">
                             <button 
+                              className="add-req-btn"
+                              title="Add Request"
+                              onClick={(e) => handleAddRequestToCollection(col.id, e)}
+                            >
+                              <Plus size={14} />
+                            </button>
+                            <button 
                               className="delete-btn"
                               title="Delete Collection"
                               onClick={(e) => handleDeleteCollection(col.id, e)}
@@ -1224,10 +1306,18 @@ function App() {
                   </button>
 
                   {backendOnline && (
-                    <button className="save-btn" onClick={openSaveModal}>
-                      <Save size={14} />
-                      Save
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button className="save-btn" onClick={handleSave}>
+                        <Save size={14} />
+                        Save
+                      </button>
+                      {activeTab.isSaved && (
+                        <button className="save-btn" onClick={handleSaveAs} title="Save as a new request">
+                          <Copy size={14} />
+                          Save As
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1635,7 +1725,7 @@ function App() {
       {showSaveModal && (
         <div className="modal-overlay" onClick={() => setShowSaveModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <span className="modal-title">Save Request</span>
+            <span className="modal-title">{isSaveAs ? 'Save Request As' : 'Save Request'}</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <label style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Request Name</label>
               <input 

@@ -362,6 +362,29 @@ button, input, select, textarea {
   background: rgba(239, 68, 68, 0.1);
 }
 
+.add-req-btn {
+  opacity: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collection-title-container:hover .add-req-btn {
+  opacity: 1;
+}
+
+.add-req-btn:hover {
+  color: var(--color-orange);
+  background: var(--color-orange-light);
+}
+
 /* Collections Items */
 .collection-folder {
   border: 1px solid var(--border-color);
