@@ -35,6 +35,8 @@ function App() {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [isSaveAs, setIsSaveAs] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [saveReqName, setSaveReqName] = useState('');
   const [selectedColId, setSelectedColId] = useState('');
   const [showCollectionModal, setShowCollectionModal] = useState(false);
@@ -691,6 +693,8 @@ function App() {
 
         if (res.ok) {
           fetchCollections(token);
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 2000);
         }
       } catch (err) {
         console.error('Error saving request:', err);
@@ -817,6 +821,8 @@ function App() {
           requestId: savedReq.id
         });
         fetchCollections(token);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
         setShowSaveModal(false);
       }
     } catch (err) {
@@ -828,8 +834,9 @@ function App() {
 
   // Create Collection
   const handleCreateCollection = async () => {
-    if (!newColName.trim() || !token) return;
+    if (!newColName.trim() || !token || isCreatingCollection) return;
 
+    setIsCreatingCollection(true);
     try {
       const res = await fetch(`${BACKEND_URL}/api/collections`, {
         method: 'POST',
@@ -851,6 +858,8 @@ function App() {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsCreatingCollection(false);
     }
   };
 
@@ -1340,12 +1349,16 @@ function App() {
 
                   {backendOnline && (
                     <div style={{ display: 'flex', gap: '6px' }}>
-                      <button className="save-btn" onClick={handleSave}>
-                        <Save size={14} />
-                        Save
+                      <button className="save-btn" onClick={handleSave} disabled={saveSuccess}>
+                        {saveSuccess ? (
+                          <Check size={14} style={{ color: 'var(--color-post)' }} />
+                        ) : (
+                          <Save size={14} />
+                        )}
+                        {saveSuccess ? 'Saved!' : 'Save'}
                       </button>
                       {activeTab.isSaved && (
-                        <button className="save-btn" onClick={handleSaveAs} title="Save as a new request">
+                        <button className="save-btn" onClick={handleSaveAs} title="Save as a new request" disabled={saveSuccess}>
                           <Copy size={14} />
                           Save As
                         </button>
@@ -1833,9 +1846,9 @@ function App() {
               <button 
                 className="btn-primary" 
                 onClick={handleCreateCollection}
-                disabled={!newColName.trim()}
+                disabled={!newColName.trim() || isCreatingCollection}
               >
-                Create
+                {isCreatingCollection ? 'Creating...' : 'Create'}
               </button>
             </div>
           </div>
